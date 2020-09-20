@@ -1,0 +1,403 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5.x                                   |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      snappyHexMeshDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Which of the steps to run
+castellatedMesh true;
+snap            true;
+addLayers       false;//true;
+
+geometry
+{
+
+	printer.stl
+	{
+		type triSurfaceMesh;
+		name printer;
+		
+		regions
+		{
+			body	
+			{
+				name body;
+			}
+			
+			inlet
+			{
+				name inlet;
+			}
+		}
+	}
+	
+	box
+	{
+		type	searchableBox;
+		min		(-0.01 -0.02 -0.01);
+		max		(0.01 0.03 0.01);
+	}
+};
+
+// Settings for the castellatedMesh generation.
+castellatedMeshControls
+{
+
+    // Refinement parameters
+    // ~~~~~~~~~~~~~~~~~~~~~
+
+    maxLocalCells 1000000;
+
+    maxGlobalCells 10000000;
+
+    minRefinementCells 10;
+
+    maxLoadUnbalance 0.10;
+
+    nCellsBetweenLevels 3;
+
+    // Explicit feature edge refinement
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    features
+    (
+        {
+            /*file "base.eMesh";
+            level 5;
+
+			file "tip.eMesh";
+			level 5;*/
+			
+			file"printer.eMesh";
+			level 8;
+        }
+    );
+
+    // Surface based refinement
+    // ~~~~~~~~~~~~~~~~~~~~~~~~
+
+    refinementSurfaces
+    {		
+		printer
+		{
+			level (6 6);
+			
+			regions
+			{
+				body
+				{
+					level (4 4);
+					
+					patchInfo
+					{
+						type wall;
+					}
+				}
+				
+				inlet
+				{
+					level (4 4);
+					
+					patchInfo
+					{
+						type patch;
+					}
+				}	
+		 
+			}				
+		}
+		
+            //- Optional increment (on top of max level) in small gaps
+            //gapLevelIncrement 2;
+
+            //- Optional angle to detect small-large cell situation
+            //  perpendicular to the surface. Is the angle of face w.r.t.
+            //  the local surface normal. Use on flat(ish) surfaces only.
+            //  Otherwise leave out or set to negative number.
+            //perpendicularAngle 10;
+    }
+
+    // Feature angle:
+    // - used if min and max refinement level of a surface differ
+    // - used if feature snapping (see snapControls below) is used
+    resolveFeatureAngle 15; 
+    //resolveFeatureAngle 30;		//default
+    //resolveFeatureAngle 60;		//To avoid too much refinement with curvature it also reoslve the feature edges		
+    //resolveFeatureAngle 90;
+
+    //- Optional increment (on top of max level) in small gaps
+    //gapLevelIncrement 3;
+
+    // If not specified same as resolveFeatureAngle
+    //planarAngle 30;
+
+    // Region-wise refinement
+    // ~~~~~~~~~~~~~~~~~~~~~~
+
+    refinementRegions
+    {
+		box	
+		{
+			mode inside;
+			levels ((3 3));
+		}
+
+    }
+
+    // Mesh selection
+    // ~~~~~~~~~~~~~~
+
+    locationInMesh (0 -0.01 0); 
+
+    allowFreeStandingZoneFaces true;
+    //allowFreeStandingZoneFaces false;
+
+    // Optional: do not remove cells likely to give snapping problems
+    // handleSnapProblems false;
+
+    // Optional: switch off topological test for cells to-be-squashed
+    //           and use geometric test instead
+    //useTopologicalSnapDetection false;
+}
+
+// Settings for the snapping.
+snapControls
+{
+    // Number of patch smoothing iterations before finding correspondence
+    // to surface
+    nSmoothPatch 5;	//default
+    //nSmoothPatch 10;	//improved
+
+    tolerance 1.0;
+    //tolerance 1.0;
+
+    //nSolveIter 30;	//default
+    nSolveIter 300;	//improved //The higher the value the better the body fitted mesh, increase the value if you are having problem with mesh quality related to the snapping step
+
+    //nRelaxIter 5;	//default
+    nRelaxIter 100;	//improved //Increase this value to improve the quality of body fitted mesh	
+
+    // Feature snapping
+
+        // Number of feature edge snapping iterations.
+        // Leave out altogether to disable.
+        nFeatureSnapIter 100; //Increase this value to improve the quality of the edge features
+
+        // Detect (geometric only) features by sampling the surface
+        // (default=false).
+        implicitFeatureSnap false;
+
+        // Use castellatedMeshControls::features (default = true)
+        explicitFeatureSnap true;
+
+        // Detect features between multiple surfaces
+        // (only for explicitFeatureSnap, default = false)
+        multiRegionFeatureSnap true;
+
+    // wip: disable snapping to opposite near surfaces (revert to 22x behaviour)
+    // detectNearSurfacesSnap false;
+}
+
+// Settings for the layer addition.
+addLayersControls
+{
+    relativeSizes false;//true; //when the option relativeSizes is false, we give the actual thickness of the layers.
+
+        // Expansion factor for layer mesh
+        //expansionRatio 1.0;
+        expansionRatio 1.2;//1.2;
+
+        finalLayerThickness 0.0005;
+
+        //firstLayerThickness 0.1;
+
+        //thickness 0.5
+
+    //minThickness 0.25;
+    minThickness 0.0001;
+
+    layers
+    {
+
+         /*"(wall0|wall1)"
+        {
+            nSurfaceLayers 5;
+	}*/
+	
+//can add refinement locally
+/*
+        maxY
+        {
+            nSurfaceLayers 1;
+            // Per patch layer data
+            expansionRatio      1.3;
+            finalLayerThickness 0.3;
+            minThickness        0.1;
+        }
+*/
+
+        // Disable any mesh shrinking and layer addition on any point of
+        // a patch by setting nSurfaceLayers to 0
+/*
+        frozenPatches
+        {
+            nSurfaceLayers 0;
+        }
+*/
+    }
+
+    // Advanced settings
+    nGrow 0;
+
+    
+
+    // Static analysis of starting mesh
+
+        // When not to extrude surface. 0 is flat surface, 90 is when two faces
+        // are perpendicular
+        //featureAngle 0;			//no inflation
+        featureAngle 180;//60;
+        //featureAngle 130;		//default
+        //featureAngle 180;
+        //featureAngle 270;
+
+        // Stop layer growth on highly warped cells
+        maxFaceThicknessRatio 0.5;
+
+    // Patch displacement
+
+        // Number of smoothing iterations of surface normals
+        nSmoothSurfaceNormals 1;
+
+        // Smooth layer thickness over surface patches
+        nSmoothThickness 10;
+
+    // Medial axis analysis
+
+        // Angle used to pick up medial axis points
+        // Note: changed(corrected) w.r.t 17x! 90 degrees corresponds to 130
+        // in 17x.
+        minMedialAxisAngle 80;//90;
+        minMedianAxisAngle 90;
+
+        // Reduce layer growth where ratio thickness to medial
+        // distance is large
+        maxThicknessToMedialRatio 0.6;//0.3;
+
+        // Number of smoothing iterations of interior mesh movement direction
+        nSmoothNormals 3;
+
+        // Optional: limit the number of steps walking away from the surface.
+        // Default is unlimited.
+        //nMedialAxisIter 10;
+
+        // Optional: smooth displacement after medial axis determination.
+        // default is 0.
+        //nSmoothDisplacement 90;
+
+        // (wip)Optional: do not extrude a point if none of the surrounding points is
+        // not extruded. Default is false.
+        //detectExtrusionIsland true;
+
+    // Mesh shrinking
+
+        // Optional: at non-patched sides allow mesh to slip if extrusion
+        // direction makes angle larger than slipFeatureAngle. Default is
+        // 0.5*featureAngle.
+        slipFeatureAngle 30;
+
+        // Maximum number of snapping relaxation iterations. Should stop
+        // before upon reaching a correct mesh.
+        nRelaxIter 5;
+
+        // Create buffer region for new layer terminations
+        nBufferCellsNoExtrude 0;
+
+        // Overall max number of layer addition iterations. The mesher will
+        // exit if it reaches this number of iterations; possibly with an
+        // illegal mesh.
+        nLayerIter 50;
+
+        // Max number of iterations after which relaxed meshQuality controls
+        // get used. Up to nRelaxedIter it uses the settings in
+        // meshQualityControls,
+        // after nRelaxedIter it uses the values in
+        // meshQualityControls::relaxed.
+        nRelaxedIter 20;
+
+        // Additional reporting: if there are just a few faces where there
+        // are mesh errors (after adding the layers) print their face centres.
+        // This helps in tracking down problematic mesh areas.
+        //additionalReporting true;
+}
+
+// Generic mesh quality settings. At any undoable phase these determine
+// where to undo.
+meshQualityControls
+{
+    // Specify mesh quality constraints in separate dictionary so can
+    // be reused (e.g. checkMesh -meshQuality)
+    #include "meshQualityDict"
+
+    // Optional : some meshing phases allow usage of relaxed rules.
+    // See e.g. addLayersControls::nRelaxedIter.
+    relaxed
+    {
+        // Maximum non-orthogonality allowed. Set to 180 to disable.
+        maxNonOrtho 75;
+    }
+
+    //minFlatness 0.5;
+
+    // Advanced
+
+        // Number of error distribution iterations
+        nSmoothScale 4;
+        // amount to scale back displacement at error points
+        errorReduction 0.75;
+}
+
+// Advanced
+
+//debug 0;
+//debug 3;
+
+//// Debug flags
+/*
+debugFlags
+(
+    mesh            // write intermediate meshes
+    intersections   // write current mesh intersections as .obj files
+    featureSeeds    // write information about explicit feature edge
+                    // refinement
+    attraction      // write attraction as .obj files
+    layerInfo       // write information about layers
+);
+*/
+
+//
+//// Write flags
+/*
+writeFlags
+(
+    scalarLevels    // write volScalarField with cellLevel for postprocessing
+    layerSets       // write cellSets, faceSets of faces in layer
+    layerFields     // write volScalarField for layer coverage
+);
+*/
+
+// Merge tolerance. Is fraction of overall bounding box of initial mesh.
+// Note: the write tolerance needs to be higher than this.
+mergeTolerance 1e-6;
+
+// ************************************************************************* //
